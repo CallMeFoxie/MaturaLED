@@ -1,0 +1,41 @@
+/*
+ * display.asm
+ *
+ *  Created: 23.11.2011 18:23:18
+ *   Author: Ondra Moravek
+ *   BOOTLOADER_NATIVE
+ */ 
+
+DISPLAY_TIMER_INIT: ; inits the timers and such. NOT an interrupt driven!
+	LDI		R16, 0xFE ; output compare shall fire up right before the main timer ovf fires up...
+	OUT		OCR0, R16
+	LDI		R16, (1<<CS01)|(1<<CS00) ; clk/32
+	OUT		TCCR0, R16 ; timer is running now
+	LDI		R16, (1<<TOIE0)|(1<<OCIE0) ; setup interrupts
+	OUT		TIMSK, R16 ; interrupts enabled... but not the I flag yet!
+	RET
+ 
+
+DISPLAY_TIMER_CLEAR: ; just clear the first 595 so the output MOSFETs can discharge. Godd enough is few us before the main timer fires up
+	PUSH	R16
+	IN		R16, SREG
+	PUSH	R16
+	LDI		R16, 0xFF ; should disable both outputs... drive all MOSFETs high!
+	RCALL	SPI_Send
+	SBI		PORTE, PE7 ; software PWM lol, for debugging
+	RCALL	DISPLAY_TOGGLE_RCK
+	POP		R16
+	OUT		SREG, R16
+	POP		R16
+	RETI
+
+DISPLAY_TOGGLE_RCK:
+	SBI		PORTB, PB0
+	NOP
+	NOP
+	CBI		PORTB, PB0
+	RET
+
+DISPLAY_TIMER_START:
+	CBI		PORTE, PE7 ; software PWM lol, for debugging
+	RETI

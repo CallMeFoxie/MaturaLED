@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectVersion>6.1</ProjectVersion>
+    <ProjectGuid>{05b63267-165d-48da-87cd-a266a683c4f9}</ProjectGuid>
+    <avrdeviceseries>none</avrdeviceseries>
+    <avrdevice>ATmega128A</avrdevice>
+    <OutputDirectory>$(MSBuildProjectDirectory)\$(Configuration)</OutputDirectory>
+    <AssemblyName>bootloader</AssemblyName>
+    <Name>bootloader</Name>
+    <RootNamespace>bootloader</RootNamespace>
+    <EntryFile>$(MSBuildProjectDirectory)\bootloader.asm</EntryFile>
+    <OutputType>Executable</OutputType>
+    <ToolchainName>com.Atmel.AVRAssembler</ToolchainName>
+    <Language>ASSEMBLY</Language>
+    <ToolchainFlavour>Native</ToolchainFlavour>
+    <avrtool />
+    <AsfVersion>2.11.1</AsfVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+    <ToolchainSettings>
+      <AvrAssembler>
+        <avrasm.assembler.general.IncludeFile>($IncludeFile)</avrasm.assembler.general.IncludeFile>
+      </AvrAssembler>
+    </ToolchainSettings>
+    <OutputFileName>bootloader</OutputFileName>
+    <OutputFileExtension>.obj</OutputFileExtension>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+    <ToolchainSettings>
+      <AvrAssembler>
+        <avrasm.assembler.general.IncludeFile>($IncludeFile)</avrasm.assembler.general.IncludeFile>
+      </AvrAssembler>
+    </ToolchainSettings>
+    <OutputFileName>bootloader</OutputFileName>
+    <OutputFileExtension>.obj</OutputFileExtension>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="bootloader.asm">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="commands.asm">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <Import Project="$(AVRSTUDIO_EXE_PATH)\Vs\AvrAssembler.targets" />
+</Project>

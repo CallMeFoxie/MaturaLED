@@ -1,0 +1,198 @@
+/*
+ * bootloader.asm
+ *
+ *  Created: 16.2.2012 9:27:09
+ *   Author: Ondra
+ */ 
+ .dseg
+ADDRLD: .BYTE 2
+
+.cseg
+
+
+.org 0x0000
+	JMP BOOTSTRAP ; RESET
+	/*
+	RETI ; int0
+	RETI ; int1
+	RETI ; int2
+	RETI ; int3
+	RETI ; int4
+	RETI ; int5
+	RETI ; int6
+	RETI ; int7
+	RETI ; timer2comp
+	RETI ; timer2ovf
+	RETI ; timer1capt
+	RETI ; timer1compa
+	RETI ; timer1compb
+	RETI ; timer1ovf
+	RETI ; timer0comp*/
+.org 0x001E
+	JMP		DISPLAY_TIMER_CLEAR ; timer0ovf
+.org 0x0020
+	JMP		DISPLAY_TIMER_START
+/*
+	RETI ; SPI
+	RETI ; USART0 rx
+	RETI ; USART0 udre
+	RETI ; USART0 tx
+	RETI ; ADC
+	RETI ; EE READY
+	RETI ; ANALOGCOMP
+	RETI ; timer1compc
+	RETI ; timer3capt
+	RETI ; timer3compa
+	RETI ; timer3compb
+	RETI ; timer3compc
+	RETI ; timer3ovf
+	RETI ; usart1 rx
+	RETI ; usart1 udre
+	RETI ; usart1 tx
+	RETI ; TWI
+	RETI ; SPM ready
+	*/
+.org LARGEBOOTSTART
+	JMP BOOTSTRAP
+
+.include "strings.inc"
+.include "../shared/macros.inc"
+.include "../shared/pcserial.asm"
+.include "../shared/eeprom.asm"
+.include "../shared/display.asm"
+.include "../shared/spi.asm"
+.include "boot.asm"
+.include "commands.asm"
+
+
+BOOTSTRAP:
+
+	LDI		R16, LOW(RAMEND) ; set stack
+	OUT		SPL, R16
+
+	LDI		R16, HIGH(RAMEND)
+	OUT		SPH, R16
+
+	; setup pullups and output ports
+	LDI		R16, (1<<PB0)|(1<<PB1)|(1<<PB2)|(1<<PB4)|(1<<PB5)|(1<<PB6)|(1<<PB7)
+	OUT		DDRB, R16
+
+	LDI		R16, (1<<PE1)|(1<<PE2)|(1<<PE3)|(1<<PE4)|(1<<PE5)|(1<<PE6)|(1<<PE7)
+	OUT		DDRE, R16
+
+	LDI		R16, 0xFF
+	OUT		DDRD, R16
+
+	LDI		R25, 0 ; set the A16 pin of extmem as output and set it to low (bank0)
+	OUT		PORTD, R25
+
+	RCALL	SPI_Init
+	; safety - clear out all the LED registers!
+
+	
+	RCALL	PC_Init
+	
+	RCALL	DISPLAY_TIMER_INIT
+	
+
+	LDI		R16, (1 << SRE) ; enable xmem
+	OUT		MCUCR, R16
+
+	PC_Send_String	STR_HELLO
+
+	; start memtest -- tests external memory and cleans it lateron.
+	PC_Send_String	STR_MEMTEST
+	RCALL	BOOT_MEMTEST
+
+
+
+	; PortD is set higher, PortF is ADC + JTAG. Not gonna mess about that!
+
+	; we should be all setup... let's enable interrupts!
+	SEI
+
+LOOP:
+	PC_Send_String STR_CMDLINE
+
+	RCALL	PC_Receive
+
+	PUSH	R16
+	PC_Send_String STR_CRLF
+
+	POP		R16
+	CPI		R16, 'i' // who 
+	BREQ	B_COMMAND_WHO
+
+	CPI		R16, 't' // toggle bank 
+	BREQ	inttt
+
+	CPI		R16, 'r' //read memory
+	BREQ	B_COMMAND_READ
+
+	CPI		R16, 'w' // write memory
+	BREQ	B_COMMAND_WRITE
+
+	CPI		R16, 'a' // load address to X
+	BREQ	B_COMMAND_ADDR
+
+
+	PC_Send_String	STR_UNKNOWN_COMMAND
+
+	RJMP LOOP
+
+B_COMMAND_TOGGLE:
+	PUSH R16
+	SER R16
+	OUT PINB, R16
+	NOP
+	CLR R16
+	OUT PINB, R16
+	POP R16
+	RJMP LOOP
+
+B_COMMAND_WHO:
+	RCALL COMMAND_WHO
+	RJMP LOOP
+
+B_COMMAND_ADDR:
+	LDI		XL, LOW(ADDRLD)
+	LDI		XH, HIGH(ADDRLD)
+	LDI		R18, 2
+	RCALL	PC_LOADBINARY
+	LDI		ZL, LOW(ADDRLD)
+	LDI		ZH, HIGH(ADDRLD)
+	LD		XH, Z+ ; first read HIGH byte
+	LD		XL, Z
+	RJMP	LOOP
+
+B_COMMAND_READ:
+	LDI		R16, 1
+	MOV		ZL, XL
+	MOV		ZH, XH
+	LDI		R17, 0x1
+	;LDI		R18, 1 ; flash
+	LDI		R18, 0 ; RAM
+	CALL	PC_DUMPBINARY
+	RJMP	LOOP
+
+B_COMMAND_WRITE:
+	PUSH	XL
+	PUSH	XH
+	LDI		R18, 1 ; one byte
+	RCALL	PC_LOADBINARY
+	POP		XH
+	POP		XL
+	RJMP	LOOP
+
+inttt:	
+	IN		R16, PORTD
+	TST		R16
+	BREQ	inttt_add
+	LDI		R16, 0x00
+	OUT		PORTD, R16
+	RJMP	LOOP
+
+inttt_add:
+	LDI		R16, 0xFF
+	OUT		PORTD, R16
+	RJMP	LOOP

@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/ledmatrix/!svn/ver/6/MaturaLED/shared
+END
+pcserial.asm
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/ledmatrix/!svn/ver/7/MaturaLED/shared/pcserial.asm
+END
+display.asm
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/ledmatrix/!svn/ver/7/MaturaLED/shared/display.asm
+END
+eeprom.asm
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/ledmatrix/!svn/ver/1/MaturaLED/shared/eeprom.asm
+END
+spi.asm
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/ledmatrix/!svn/ver/7/MaturaLED/shared/spi.asm
+END
+macros.inc
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/ledmatrix/!svn/ver/7/MaturaLED/shared/macros.inc
+END

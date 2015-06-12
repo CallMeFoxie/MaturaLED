@@ -1,0 +1,10 @@
+/*
+ * commands.asm
+ *
+ *  Created: 16.2.2012 17:02:49
+ *   Author: Ondra
+ */ 
+
+COMMAND_WHO:
+	PC_Send_String	STR_WHO
+	RET

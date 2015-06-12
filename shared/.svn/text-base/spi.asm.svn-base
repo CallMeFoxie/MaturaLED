@@ -1,0 +1,33 @@
+/*
+ * spi.asm
+ *
+ *  Created: 23.11.2011 18:23:18
+ *   Author: Ondra Moravek
+ *   BOOTLOADER_NATIVE
+ */ 
+ 
+SPI_Init:
+	LDI		R16, (1<<MSTR)|(1<<SPE)|(1<<DORD);|(1<<CPOL) ; SPI, fCLK/4 speed
+	OUT		SPCR, R16
+	RET
+
+/* SPI_Send: Sends data through SPI
+	Params:
+		R16 -- byte to send
+	Returns:
+		R16 -- incoming byte
+*/
+SPI_Send:
+	;SBIS	SPSR, SPIF
+	;RJMP	SPI_Send
+	;PUSH	R17
+	;IN		R17, SPDR
+	;OUT		SPDR, R16
+	;MOV		R16, R17
+	;POP		R17
+	OUT		SPDR, R16
+SPI_Send_Wait:
+	SBIS	SPSR, SPIF
+	RJMP	SPI_Send_Wait ; wait for transmission
+	RET
+

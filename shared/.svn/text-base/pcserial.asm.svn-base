@@ -1,0 +1,186 @@
+/*
+ * pcserial.asm
+ *
+ *  Created: 23.11.2011 18:23:18
+ *   Author: Ondra Moravek
+ *   BOOTLOADER_NATIVE
+ */ 
+ 
+
+ .def PCTEMP = R22
+ .def TXflash = R17 ; param2
+
+.cseg
+ 
+ HEXNUMS: .db 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46
+
+/* PC_Init: Prepares UART0 for communication with PC
+*/
+PC_Init:
+	LDI		R16, 0
+	OUT		UCSR0A, R16 ; UCSR0A
+	STS		UBRR0H, R16 ; UBRR high
+	LDI		R16, (1 << RXEN0) | (1 << TXEN0) ; enable transmit and receive
+	OUT		UCSR0B, R16
+	LDI		R16, (1 << UCSZ01) | (1 << UCSZ00) ; 8n1
+	STS		UCSR0C, R16
+
+	LDI		R16, 103
+
+	OUT		UBRR0L, R16 ; load from settings.inc
+
+	RET
+
+/* PC_SEND: Sends data through serial port to PC
+ *	Params:
+ *   R16 - data
+*/
+PC_SEND:
+PC_SEND_WAIT:
+	SBIS	UCSR0A, UDRE0
+	RJMP	PC_SEND_WAIT
+	; UDRE0 flag cleared if we got here
+
+	OUT		UDR0, R16
+	RET
+
+/* PC_RECEIVE: Receives data from serial port from PC
+ *	Returns:
+ *   R16 - data
+*/
+PC_RECEIVE:
+PC_RECEIVE_WAIT:
+	SBIS	UCSR0A, RXC0
+	RJMP	PC_RECEIVE_WAIT
+	
+	IN		R16, UDR0
+
+.ifndef BINARY
+	RCALL	PC_SEND
+.endif
+
+	RET
+
+
+/* PC_DUMPSTRING: Sends string from flash/RAM into PC
+ * CALL THROUGH PC_Send_String or PC_Send_String_RAM! Not directly!
+ *
+*/
+PC_DUMPSTRING:
+	; is it from flash?
+	TST		TXflash
+	BREQ	PC_DUMPSTRING_RAM
+	ELPM	R22, Z ; reads the character
+	RJMP 	PC_DUMPSTRING_SEND
+PC_DUMPSTRING_RAM:
+	LD		R22, Z
+PC_DUMPSTRING_SEND:
+	TST		R22 ; check if it is 00 -> end
+	BREQ 	PC_DUMPSTRING_END
+	MOV		R16, R22
+	RCALL 	PC_SEND
+	ADIW	Z, 1
+	RJMP	PC_DUMPSTRING
+PC_DUMPSTRING_END:
+	RET
+
+/* PC_DUMPBINARY: Sends binary number to UART
+   Params:
+		R16 - number of bytes
+		Z - low bytes of address
+		R17.0 - high bit of address (flash only)
+		R18.0 - flash /1/ or RAM /0/
+*/
+PC_DUMPBINARY:
+	PUSH	R22
+	IN		R22, RAMPZ
+	PUSH	R22
+PC_DUMPBINARY_LOOP:
+	ANDI	R18, 0x01
+	TST		R18
+	BREQ	PC_DUMPBINARY_LDRAM
+	OUT		RAMPZ, R17
+	ELPM	R22, Z+
+	RJMP	PC_DUMPBINARY_DO
+PC_DUMPBINARY_LDRAM:
+	LD		R22, Z+
+PC_DUMPBINARY_DO:
+	PUSH	R16
+	PUSH	ZL
+	PUSH	ZH
+	PUSH	R22
+	; loop
+	SWAP	R22 ; convert little endian to regular readable format
+	ANDI	R22, 0xF
+	LDI		R16, 0
+	ADD16	LOW(HEXNUMS<<1), HIGH(HEXNUMS<<1), R22, R16
+	; do not forget to set RAMPZ, considering that HEXNUMS might be after 64kB boundary
+	LDI		R16, (HEXNUMS>>15)
+	OUT		RAMPZ, R16
+	ELPM	R16, Z
+	RCALL	PC_Send
+	POP		R22
+	ANDI	R22, 0xF
+	LDI		R16, 0
+	ADD16	LOW(HEXNUMS<<1), HIGH(HEXNUMS<<1), R22, R16
+	; do not forget to set RAMPZ, considering that HEXNUMS might be after 64kB boundary
+	LDI		R16, (HEXNUMS>>15)
+	OUT		RAMPZ, R16
+	ELPM	R16, Z
+	RCALL	PC_Send
+	POP		ZH
+	POP		ZL
+	POP		R16
+	SUBI	R16, 1
+	TST		R16
+	BREQ	PC_DUMPBINARY_END
+	RJMP	PC_DUMPBINARY_LOOP
+PC_DUMPBINARY_END:
+	POP		R22
+	OUT		RAMPZ, R22
+	POP		R22
+	RET
+
+
+/* PC_LOADBINARY: Loads binary number in hex format from UART and saves to RAM.
+    Params:
+		X: base address
+		R18: Length
+*/
+PC_LOADBINARY:
+	PUSH	R17
+PC_LOADBINARY_LOOP:
+	TST		R18
+	BREQ	PC_LOADBINARY_END
+	RCALL	PC_RECEIVE ; load low nibble
+	;MOV		R17, R16 ; save the low nibble
+	; trick -- substract 0x30. If it is higher than 0x9, substract another 0x7
+	SUBI	R16, 0x30
+	CPI		R16, 0x10
+	BRGE	PC_LOADBINARY_AF_LOW
+PC_LOADBINARY_HIGHNIBBLE:
+	MOV		R17, R16
+	ANDI	R17, 0x0F
+	RCALL	PC_RECEIVE ; load high nibble
+	SUBI	R16, 0x30
+	CPI		R16, 0x10
+	BRGE	PC_LOADBINARY_AF_HIGH
+PC_LOADBINARY_SAVE:
+	ANDI	R16, 0x0F
+	SWAP	R17
+	OR		R16, R17
+	ST		X+, R16
+	SUBI	R18, 1
+	RJMP	PC_LOADBINARY_LOOP
+
+PC_LOADBINARY_AF_LOW:
+	SUBI	R16, 0x7
+	RJMP	PC_LOADBINARY_HIGHNIBBLE
+
+PC_LOADBINARY_AF_HIGH:
+	SUBI	R16, 0x7
+	RJMP	PC_LOADBINARY_SAVE
+
+PC_LOADBINARY_END:
+	POP		R17
+	RET

@@ -1,0 +1,19 @@
+/*
+ * strings.inc
+ *
+ *  Created: 16.2.2012 17:05:37
+ *   Author: Ondra
+ */ 
+
+.cseg
+STR_WHO: .db "Hello, I am USB LED controller. Wassup?", 0x0D, 0x0A, 0x00
+STR_CMDLINE: .db 0x0D, 0x0A, "Command> ", 0x00
+STR_CRLF: .db 0x0D, 0x0A, 0x00
+STR_UNKNOWN_COMMAND: .db "Unknown command.", 0x0D, 0x0A, 0x00
+STR_MEMTEST: .db "Running extended memory test (0x10FF -> 0xFFFF)... ", 0x0D, 0x0A, 0x00
+STR_BANK0: .db " BANK 0: 59.75kB... ", 0x00
+STR_BANK1: .db " BANK 1: 59.75kB... ", 0x00
+STR_MEMTEST_FAIL: .db "FAILED!", 0x00
+STR_MEMTEST_OK: .db "OK!", 0x0D, 0x0A, 0x00
+STR_HELLO: .db 0x0D, 0x0A, 0x0D, 0x0A, 0x0D, 0x0A, 0x0D, 0x0A, "================================================================================", 0x0D, 0x0A, "Booting up USB LED Matrix Driver board. Version 1.0.indev.1", 0x0D, 0x0A, "Copyright 2012 Ondrej Moravek.", 0x0D, 0x0A, 0x0D, 0x0A, 0x00
+STR_START: .db 0x0D, 0x0A, "Boot finished. Ready to be commanded!", 0x0D, 0x0A, 0x00

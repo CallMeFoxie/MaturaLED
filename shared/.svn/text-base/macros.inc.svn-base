@@ -1,0 +1,79 @@
+ /*
+ * macros.inc
+ *
+ *  Created: 9.12.2011 19:22:08
+ *   Author: Ondra
+ *  FIRMWARE_NATIVE
+ */ 
+.macro		SUB16
+	SUB		@1, @3
+	SBC		@0, @2
+.endmacro
+
+.macro		CPI16
+	CPI		@1, LOW(@2)
+	LDI		R22, HIGH(@2)
+	CPC		R22, @0
+.endmacro
+
+// number+R19 number+R18+carry
+.macro		ADD16
+	LDI		ZL, @0
+	LDI		ZH, @1
+	ADD		ZL, @2
+	ADC		ZH, @3
+.endmacro
+
+ .macro PC_Send_String ; sends string from data section
+ .ifndef BINARY
+	PUSH	TXflash
+	PUSH	ZH
+	PUSH	ZL
+	PUSH	R18
+	IN		R18, RAMPZ
+	PUSH	R18
+
+	LDI		TXflash, 1
+	LDI		ZL, LOW(@0<<1)
+	LDI		ZH, HIGH(@0<<1)
+	LDI		R18, (@0>>15)
+	OUT		RAMPZ, R18
+	CALL	PC_DUMPSTRING
+
+	POP		R18
+	OUT		RAMPZ, R18
+	POP		R18
+	POP		ZL
+	POP		ZH
+	POP		TXflash
+.endif
+.endmacro
+
+.macro PC_Send_String_RAM ; sends string from RAM
+ .ifndef BINARY
+	LDI		TXflash, 0
+	LDI		ZL, LOW(@0)
+	LDI		ZH, HIGH(@0)
+	CALL 	PC_DUMPSTRING
+.endif
+.endmacro
+
+.macro PC_DATA ; sends binary data to serial
+	LDI		R16, @0
+	CALL	PC_SEND
+.endmacro
+
+.macro SETBANK0
+	CBI		PORTD, 7
+.endmacro
+
+.macro SETBANK1
+	SBI		PORTD, 7
+.endmacro	
+
+.macro TOGCK
+	SBI		PORTB, PB1
+	NOP
+	NOP
+	CBI		PORTB, CB1
+.endmacro
